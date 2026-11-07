@@ -1,0 +1,86 @@
+{
+  "winner": "LightGBM",
+  "interval": 0.8997023956090232,
+  "evaluations": [
+    {
+      "model": "Random Forest",
+      "validation": {
+        "r2": 0.9119564350623589,
+        "rmse": 0.5879408194605391,
+        "mae": 0.468640917175249
+      },
+      "test": {
+        "r2": 0.9287224205007875,
+        "rmse": 0.5118991393148906,
+        "mae": 0.4104953327972228
+      }
+    },
+    {
+      "model": "XGBoost",
+      "validation": {
+        "r2": 0.9360378292835827,
+        "rmse": 0.50112538269605,
+        "mae": 0.3903965410193083
+      },
+      "test": {
+        "r2": 0.9424771262670864,
+        "rmse": 0.4598627318883952,
+        "mae": 0.36839136644701476
+      }
+    },
+    {
+      "model": "LightGBM",
+      "validation": {
+        "r2": 0.9370554401634075,
+        "rmse": 0.4971230543906216,
+        "mae": 0.38735179732680053
+      },
+      "test": {
+        "r2": 0.9400341505984041,
+        "rmse": 0.46952629872642626,
+        "mae": 0.3734303587781291
+      }
+    }
+  ],
+  "metadata": {
+    "source": "Seeded synthetic demonstration dataset",
+    "synthetic": true,
+    "city": "Ahmedabad",
+    "center": [
+      23.0225,
+      72.5714
+    ],
+    "resolution_m": 1000,
+    "crs": "EPSG:4326",
+    "acquisition_date": "2025-05-15",
+    "rural_reference_c": 33.0,
+    "rural_method": "Configurable synthetic rural LST; no observed rural reference available.",
+    "generated_at": "2026-11-07T12:06:24.737949+00:00",
+    "limitations": [
+      "Synthetic environmental and demographic values; not satellite observations.",
+      "Metrics measure recovery of a synthetic relationship, not real-world accuracy.",
+      "Vulnerability uses synthetic elderly share; socioeconomic indicators unavailable."
+    ]
+  },
+  "split": {
+    "training": 162,
+    "validation": 54,
+    "test": 54,
+    "buffer": 54,
+    "method": "Western 9 columns train; next 3 validate; 3-column buffer; eastern 3 test. No coordinates or target-derived predictors."
+  },
+  "features": [
+    "ndvi",
+    "ndwi",
+    "ndbi",
+    "ndbai",
+    "building_density",
+    "population_density",
+    "air_temperature",
+    "humidity",
+    "rainfall",
+    "solar_radiation",
+    "soil_moisture",
+    "land_cover"
+  ]
+}

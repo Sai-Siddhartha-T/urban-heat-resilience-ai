@@ -1,0 +1,1 @@
+{"status": "PASS", "workflows": ["overview map 324 interactive cells", "prediction charts", "SHAP", "risk weights", "saved simulation", "constrained optimization", "local evidence assistant", "report CSV download", "city switch", "mobile navigation and no horizontal overflow"], "console_errors": []}

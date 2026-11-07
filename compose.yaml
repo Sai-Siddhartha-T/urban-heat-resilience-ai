@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_USER: heatwise
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-heatwise}
+      POSTGRES_DB: heatwise
+    ports: ["127.0.0.1:5433:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U heatwise"]
+      interval: 5s
+      retries: 15
+  app:
+    build: .
+    ports: ["127.0.0.1:8000:8000"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://heatwise:${POSTGRES_PASSWORD:-heatwise}@db:5432/heatwise
+    volumes: ["app_data:/app/backend/data", "model_data:/app/backend/models"]
+    depends_on:
+      db: {condition: service_healthy}
+volumes:
+  postgres_data:
+  app_data:
+  model_data:
