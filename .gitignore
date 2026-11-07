@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+__pycache__/
+*.pyc
+node_modules/
+.next/
+dist/
+build/
+.DS_Store
+*.log
+data/raw/
+data/processed/
+*.tif
+*.tiff
