@@ -1,7 +1,10 @@
 from datetime import date
-from typing import Literal
+import os
+from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 from shapely.geometry import shape
+
+__path__ = [os.path.join(os.path.dirname(__file__), "schemas")]
 
 
 class StrictModel(BaseModel):
@@ -14,7 +17,7 @@ class AreaRequest(StrictModel):
     longitude: float | None = Field(None, ge=-180, le=180)
     boundary: dict | None = None
     source: Literal[
-        "sample",
+        "demo",
         "weather",
         "osm",
         "earth_engine",
@@ -22,7 +25,11 @@ class AreaRequest(StrictModel):
         "openaq",
         "stac",
         "sentinel_indices",
-    ] = "sample"
+        "nasa_power",
+        "copernicus",
+        "ghsl",
+        "groundwater",
+    ] = "weather"
     start_date: date | None = None
     end_date: date | None = None
     satellite_product: Literal["landsat", "sentinel", "modis", "worldcover", "srtm"] = (
@@ -58,7 +65,9 @@ class AreaRequest(StrictModel):
 
 class ZoneRequest(StrictModel):
     city: Literal["Ahmedabad", "Delhi", "Hyderabad"] = "Ahmedabad"
+    mode: Literal["normal", "demo"] | None = None
     zone_id: str | None = None
+    features: dict[str, float] | None = None
 
 
 class RiskRequest(ZoneRequest):
@@ -74,6 +83,9 @@ class SimulationRequest(ZoneRequest):
     )
     water_limit: float = Field(1000, ge=0, le=1e7)
     max_vegetation_pct: float = Field(40, ge=0, le=100)
+    tree_count: int | None = Field(None, ge=0, le=500_000)
+    roof_treated_pct: float | None = Field(None, ge=0, le=100)
+    road_treated_pct: float | None = Field(None, ge=0, le=100)
 
 
 class OptimizationRequest(ZoneRequest):
@@ -84,32 +96,21 @@ class OptimizationRequest(ZoneRequest):
     min_cooling: float = Field(0, ge=0, le=4)
 
 
-class ChatRequest(ZoneRequest):
-    message: str = Field(min_length=1, max_length=2000)
-    provider: Literal["auto", "groq", "gemini", "local"] = "auto"
-
-
-class AIFinding(StrictModel):
-    statement: str = Field(max_length=700)
-    fact_ids: list[str] = Field(min_length=1, max_length=10)
-
-
-class AIResponse(StrictModel):
-    summary: str = Field(max_length=1500)
-    findings: list[AIFinding] = Field(max_length=6)
-    actions: list[
-        Literal[
-            "trees",
-            "vegetation",
-            "parks",
-            "cool_roofs",
-            "pavements",
-            "corridors",
-            "roof_gardens",
-            "water",
-        ]
-    ] = Field(max_length=8)
-    limitations: list[str] = Field(max_length=8)
+from app.schemas.ai import ChatRequest, AIFinding, AIResponse, ChatResponse
+from app.schemas.evidence import (
+    CityName,
+    EvidenceKind,
+    EvidenceModel,
+    EvidenceProvenance,
+    EvidenceAssetSummary,
+    EvidenceAsset,
+    RasterGrid,
+    MapLayer,
+    Capability,
+    AnalysisAvailability,
+    WorkspaceResponse,
+    LayersResponse,
+)
 
 
 # Stable response contracts retain additional provenance fields for extensibility.
@@ -121,6 +122,10 @@ class HealthResponse(ResponseModel):
     status: Literal["ok"]
     database: str
     synthetic_predictions: bool
+    analysis_ready: bool
+    mode: Literal["normal", "demo"]
+    schema_revision: str | None = None
+    city: str = "Ahmedabad"
 
 
 class PredictionResponse(ResponseModel):
@@ -148,6 +153,17 @@ class ExplanationResponse(ResponseModel):
     note: str
 
 
+class ShapResponse(ResponseModel):
+    city: str
+    zone_id: str | None = None
+    prediction: float
+    base_value: float
+    shap_values: dict[str, float]
+    contributions: dict[str, float]
+    feature_importance: list[dict[str, Any]] | None = None
+    note: str = "TreeSHAP feature attributions computed from persisted explainer."
+
+
 class SimulationResponse(ResponseModel):
     zone_id: str
     coverage: dict[str, float]
@@ -167,12 +183,11 @@ class OptimizationResponse(ResponseModel):
     feasible: bool
     selections: list[SimulationResponse]
     violations: list[str]
+    water_used: float = 0.0
+    total_water_used: float = Field(0.0, description="Total water consumption across selected zones in m3/day")
+    water_available: float = 0.0
+    mean_cooling: float = 0.0
+    population_in_selected_zones: int = 0
     hypothetical: bool
     assumptions: list[str]
-
-
-class ChatResponse(AIResponse):
-    provider: str
-    fallback: bool
-    facts: dict
-    failures: list[dict[str, str]]
+    alternative: dict | None = None

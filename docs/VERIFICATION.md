@@ -1,6 +1,38 @@
-# Verification record — 7 November 2026
+# Verification record — 9 November 2026
 
 ## Executed successfully
+
+- **175 backend tests passed (100%)**: Full automated pytest suite (`pytest backend/tests/ -v`) passed completely in ~51.86s.
+  - `backend/tests/test_foundation.py` (3 tests): Health check, synthetic provenance & geometry, spectral indices & cloud mask.
+  - `backend/tests/test_api.py` (5 tests): Integrated workflow, input errors, unconfigured provider fallback, API tokens, explicit upstream failures.
+  - `backend/tests/test_pipeline.py` (5 tests): Three-model spatial evaluation, SHAP additivity, simulation constraints, optimizer feasibility/infeasibility, convenience inputs, multi-criteria risk index.
+  - `backend/tests/test_ai.py` (1 test): Provider schema & model validation.
+  - `backend/tests/test_sources.py` (34 tests): Ingestion adapters for Open-Meteo (forecast, ERA5 reanalysis), NASA POWER, OpenAQ v3, WorldPop, GHSL STAC, Sentinel-2 COG / WarpedVRT windowing, Copernicus, Google Earth Engine, OSM Overpass mirror failover, in-memory cache isolation.
+  - `backend/tests/test_challenger_m2.py` (19 tests): Spatial clustering boundary stress tests, dynamic partition scaling for $N \in [60, 89]$ zones, collinear/concentric zones, AI measurement unit regexes, scientific notation parsing, zero-rounding leakage elimination.
+  - `backend/tests/test_challenger_m2_api_budget.py` (30 tests): CP-SAT optimizer financial budget constraints (zero budget, infinite budget, tight budget, Pareto-frontier verification, CapEx/OpEx tracking).
+  - `backend/tests/test_e2e_tiers.py` (78 tests): Comprehensive end-to-end testing across 4 tiers:
+    - Tier 1: Feature Coverage (50 tests, 5 tests across each of 10 functional domains).
+    - Tier 2: Boundary & Corner Cases (22 tests, coordinate limits, zero denominators, capacity limits).
+    - Tier 3: Cross-Feature Pairwise Workflows (3 tests, Ingest -> Predict -> SHAP -> Risk -> Optimize -> AI Chat -> Export).
+    - Tier 4: Real-World Scenarios (3 tests, Ahmedabad Heatwave Crisis, Rapid Urbanization Dual Hazard, Industrial Corridor Retrofit).
+
+- **54 frontend Vitest tests passed (100%)**:
+  - `frontend/src/tests/metrics.test.ts` (11 tests): Shared domain metrics, SUHII calculations, cooling potential, risk classification.
+  - `frontend/src/tests/zoneCompare.test.ts` (6 tests): Multi-zone selection updates, delta metrics, disparity calculations.
+  - `frontend/src/tests/weather.test.ts` (3 tests): Weather extremes computation, heat index approximation, diurnal swings.
+  - `frontend/src/tests/integration_challenge.test.ts` (18 tests): Plural route mappings, deep linking, error typing (`ApiError`), request abort/cancellation.
+  - `frontend/src/tests/button.test.tsx` (5 tests): Shadcn/Radix button variant rendering and click interactions.
+  - `frontend/src/tests/api.test.ts` (11 tests): Strongly typed API service methods and error handling.
+
+- **Frontend Production Build clean**:
+  - `npm --prefix frontend run build` (`tsc -b && vite build`) transformed 2,105 modules and generated production bundle in ~19.97s with zero TypeScript compilation errors or warnings.
+
+- **Backend Architecture & Startup**:
+  - FastAPI modular routers in `backend/app/routes/` with clean separation of concerns and slim `main.py` (<100 lines).
+  - Thread-safe state management in `backend/app/services/state.py`.
+  - Lazy model loading & disk caching (`FAST_STARTUP=1`, `PREWARM_STATE=0`), reducing cold boot overhead.
+  - Dynamic spatial partitioning (`max(1, min(15, n // 6))`) and KMeans 2D geographic clustering fallback.
+  - AI guardrail regex refinement preventing backtracking on unit descriptions and ensuring numeric prose grounding.
 
 - Inspected `/workspace` before implementation: no application or repository was present. Initialized `heatwise/` without replacing existing user code.
 - Frontend: React/TypeScript production compilation and Vite build completed.

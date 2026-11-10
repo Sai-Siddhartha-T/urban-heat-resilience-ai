@@ -1,4 +1,11 @@
 import json,time,os,httpx
+import sys
+try:
+    from playwright.sync_api import sync_playwright
+except ImportError:
+    sync_playwright = None
+    print('Playwright not installed, skipping E2E browser smoke test.', file=sys.stderr)
+    sys.exit(0)
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 Path('work').mkdir(exist_ok=True)

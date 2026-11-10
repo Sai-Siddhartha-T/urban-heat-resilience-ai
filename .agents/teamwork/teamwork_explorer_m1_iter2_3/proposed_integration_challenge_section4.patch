@@ -1,0 +1,74 @@
+--- frontend/src/tests/integration_challenge.test.ts
++++ frontend/src/tests/integration_challenge.test.ts
+@@ -344,43 +344,56 @@
+     }
+   });
+ 
+-  it("BUG DEMONSTRATION: HTTP 200 with HTML body throws raw SyntaxError instead of ApiError", async () => {
+-    // E.g. When Vite SPA fallback returns index.html for a 404 or proxy error with status 200
++  it("handles HTTP 200 with HTML body (e.g. Vite SPA fallback) by throwing ApiError with status 200", async () => {
+     globalThis.fetch = vi.fn().mockResolvedValue({
+       ok: true,
+       status: 200,
+       statusText: "OK",
+       json: async () => {
+         throw new SyntaxError("Unexpected token '<', '<!DOCTYPE '... is not valid JSON");
+       },
+     } as unknown as Response);
+ 
+     try {
+       await request("/misrouted-html");
+       expect.unreachable();
+     } catch (err) {
+-      // It throws raw SyntaxError because line 39 does `return response.json() as Promise<T>` without try/catch
+-      expect(err).toBeInstanceOf(SyntaxError);
+-      expect(err).not.toBeInstanceOf(ApiError);
++      expect(err).toBeInstanceOf(ApiError);
++      const apiErr = err as ApiError;
++      expect(apiErr.status).toBe(200);
++      expect(apiErr.message).toContain("Malformed JSON response");
++      expect(apiErr.details).toBeInstanceOf(SyntaxError);
+     }
+   });
+ 
+-  it("BUG DEMONSTRATION: Network fetch rejection throws raw TypeError instead of ApiError", async () => {
++  it("handles network fetch rejection by throwing ApiError with status 0", async () => {
+     globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+ 
+     try {
+       await request("/network-drop");
+       expect.unreachable();
+     } catch (err) {
+-      // It throws raw TypeError because fetch itself is not wrapped in a try/catch
+-      expect(err).toBeInstanceOf(TypeError);
+-      expect((err as TypeError).message).toBe("Failed to fetch");
+-      expect(err).not.toBeInstanceOf(ApiError);
++      expect(err).toBeInstanceOf(ApiError);
++      const apiErr = err as ApiError;
++      expect(apiErr.status).toBe(0);
++      expect(apiErr.message).toBe("Network error: Failed to fetch");
++      expect(apiErr.details).toBeInstanceOf(TypeError);
+     }
+   });
+ 
+-  it("OBSERVATION: request() does not take AbortSignal or timeout option", () => {
+-    // Verify the function arity / parameters: request(path: string, body?: unknown)
+-    expect(request.length).toBe(2);
++  it("supports AbortSignal and aborts in-flight request", async () => {
++    const controller = new AbortController();
++    globalThis.fetch = vi.fn().mockImplementation((_url, init) => {
++      expect(init?.signal).toBe(controller.signal);
++      return Promise.reject(new DOMException("The operation was aborted.", "AbortError"));
++    });
++
++    try {
++      await request("/aborted", undefined, { signal: controller.signal });
++      expect.unreachable();
++    } catch (err) {
++      expect(err).toBeInstanceOf(ApiError);
++      const apiErr = err as ApiError;
++      expect(apiErr.status).toBe(0);
++      expect(apiErr.message).toContain("Network error");
++    }
+   });
+ });

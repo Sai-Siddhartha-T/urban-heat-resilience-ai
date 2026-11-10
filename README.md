@@ -8,25 +8,59 @@ A functional full-stack research prototype: live geospatial ingestion, genuine s
 
 ## Start locally
 
-Requires Python 3.12+, Node 22+, npm, and Linux `libgomp1` for LightGBM. The fastest path uses SQLite and trains sample models at first startup:
+### Prerequisites
+- Python 3.12+ (ensure the `python` command points to Python 3.12 or later)
+- Node 22+ and npm
+- (Optional) Playwright for end‑to‑end browser smoke tests. Install with `pip install playwright && playwright install` if you have internet access.
 
+### Backend
 ```bash
+# Create virtual environment and install backend requirements
+python -m venv .venv
+.venv\Scripts\activate  # on Windows PowerShell
+pip install -r backend/requirements.txt
+```
+
+### Frontend
+```bash
+npm --prefix frontend ci   # install dependencies (already done)
+npm --prefix frontend run build   # production build
+```
+
+### Run the application
+```bash
+# Linux/macOS
 cp .env.example .env
 bash scripts/run-local.sh
+
+# Windows PowerShell
+Copy-Item .env.example .env
+pwsh ./scripts/run-local.ps1
 ```
 
-Open **http://localhost:8000**. API documentation: **http://localhost:8000/docs**. A normal first start downloads dependencies, builds React, creates the database and trains the models. Keys are not required for the sample workflow. The browser receives no provider secrets.
+The API will be available at `http://127.0.0.1:8000` and the Vite dev server proxies `/api` to it.
 
-Manual commands:
-
+If you prefer to run the backend directly:
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r backend/requirements.txt
-npm --prefix frontend ci
-npm --prefix frontend run build
-cp .env.example .env
-PYTHONPATH=backend .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+cd backend
+python -m app
 ```
+
+### End‑to‑end smoke test (optional)
+```bash
+python scripts/browser_smoke.py   # runs a quick Playwright smoke test against the running server
+```
+If Playwright is not installed, the script will exit gracefully with a notice.
+
+### Testing
+```bash
+# Backend tests
+pytest -q
+
+# Frontend Vitest suite
+npm --prefix frontend test -- --run
+```
+All tests should pass.
 
 For frontend development, keep FastAPI on 8000 and run `npm --prefix frontend run dev`. Vite proxies `/api` to FastAPI. React/TypeScript with Vite was selected from the requested Next.js/React options because FastAPI owns the API and serves the compiled frontend; no Node SSR is required.
 
@@ -61,46 +95,61 @@ Sites hosting cannot execute Python/FastAPI/OR-Tools, so no nonfunctional static
 ```text
 heatwise/
   frontend/
-    src/App.tsx                # Nine integrated dashboard views
-    src/components/HeatMap.tsx # Leaflet layers and zone selection
-    src/components/button.tsx  # shadcn-style Radix/CVA primitive
-    src/api.ts                 # API calls, auth, downloads
+    src/App.tsx                # Modular dashboard root orchestrator (<110 lines)
+    src/pages/                 # 10 dedicated view pages (Overview, Map, Predictions, Explain, Risk, Simulator, Optimizer, Assistant, Reports, ZoneCompare)
+    src/components/            # Modular components (layout, common, zone, charts, modals, BoundarySketch, HeatMap)
+    src/services/              # Strongly-typed API client services (heat, ml, simulation, optimization, risk, weather, ai, reports)
+    src/types/                 # Strict TypeScript domain interfaces (geojson, simulation, weather, optimization, chat, risk, ml)
+    src/lib/                   # Shared domain utilities and constants
+    src/tests/                 # Vitest component, utility, and API client test suite (54 tests)
     src/styles.css             # Responsive dashboard styling
     src/assets/                # Locally bundled open-license fonts
     package-lock.json
   backend/
-    app/main.py                # FastAPI, REST API, static frontend
-    app/schemas.py             # Validated request/LLM schemas
+    app/main.py                # Slim FastAPI entrypoint, middleware, and lifecycle (<100 lines)
+    app/routes/                # Modular APIRouters (heat, models, simulation, optimization, risk, data, ai, reports)
+    app/schemas.py             # Validated Pydantic v2 request/LLM schemas
     app/db.py                  # SQLAlchemy and PostGIS storage
-    app/services/data.py       # Synthetic grid and index utilities
-    app/services/sources.py    # Remote data adapters and quality processing
-    app/services/ml.py         # Training, evaluation, persistence, TreeSHAP
-    app/services/planning.py   # Risk, independent simulation, CP-SAT
-    app/services/ai.py         # Groq/Gemini and explicit local fallback
-    tests/                     # Isolated automated backend tests
-    train.py                   # Synthetic / external labeled-data training
+    app/services/data.py       # Grid generation, feature indices, and fast caching
+    app/services/sources.py    # Remote data adapters and quality processing (11 ingestion mechanisms)
+    app/services/ml.py         # Dynamic spatial partitioning, training, persistence, and TreeSHAP
+    app/services/planning.py   # Risk assessment, 8 intervention models, and CP-SAT optimizer
+    app/services/ai.py         # Multi-provider assistant (Groq/Gemini/local) with numeric guardrails
+    app/services/state.py      # Thread-safe city state management and caching
+    tests/                     # Automated test suite (175 tests across unit, pipeline, sources, challenger, and E2E tiers)
+    train.py                   # Synthetic / external labeled-data training CLI
     requirements.txt
   scripts/run-local.sh
   scripts/browser_smoke.py
   docs/METHODOLOGY.md
   docs/VERIFICATION.md
+  TEST_INFRA.md
+  TEST_READY.md
   Dockerfile
   compose.yaml
   .env.example
+  pytest.ini
 ```
 
-## Implemented user workflows
+## 10 Canonical Views & Climate Intelligence UI
 
-- **Overview:** computed area, mean SUHII, hotspot counts, synthetic population exposure and priority zones.
-- **Heat map:** interactive Leaflet cells, selected zone details, SUHII, vegetation, building density, population, risk and spatial NDVI SHAP layers. Basemap attribution is retained; fixed provider tile URLs are cached server-side.
-- **Prediction:** train/compare RF, XGBoost and LightGBM; view spatial holdout metrics, actual-vs-predicted test scatter and uncertainty methodology.
-- **Explainable AI:** global actual SHAP importance, local contributions and a spatial SHAP map.
-- **Risk:** configure hazard/exposure/vulnerability exponents and recalculate ranked priorities. Missing socioeconomic data is explicit.
-- **Simulator:** eight interventions, land/roof/road/water checks, protected-area restrictions, before/after comparison, persisted scenarios and uncertainty assumptions.
-- **Optimization:** actual CP-SAT planning across priority zones with water, land, vegetation, compatibility and optional minimum-cooling limits; feasible plans or infeasibility, plus a half-water alternative. No cost/budget objective.
-- **Assistant:** send structured backend evidence to independently configurable Groq/Gemini adapters; provider availability checks, validated JSON, source keys and feasible-action checks. Missing/failed providers return a labeled local template, never simulated LLM output.
-- **Reports:** downloadable Markdown, CSV and complete JSON with model results, provenance, assumptions, scenarios and optimization.
-- **Data & sources:** import current/historical weather, real public Sentinel-2 catalog/pixels, optional OSM and WorldPop catalogs, or credentialed Earth Engine products. Accept coordinates, dates and GeoJSON polygon boundaries. Rebuild sample data with a configurable synthetic rural LST.
+The frontend is built as a dark-first climate-intelligence platform (obsidian `#080c11`, slate surfaces `#0e141d`/`#121924`, hairline borders, monospace telemetry numerals, and Linear-level precision):
+
+- **1. Overview Command Center (`OverviewPage.tsx`):** Municipal-level climate metrics (mean LST, max SUHII, population exposure, priority zones, and Earth Observation data provenance).
+- **2. Live Environmental Map (`MapPage.tsx`):** Full multi-layer Leaflet GIS engine using CartoDB Dark Matter tiles, opacity controls, layer toggle stack (LST, SUHII, NDVI, Built-up, Population, Air Quality, Weather, Groundwater), physical-unit legends, and zone inspection flyout (preserving `sidecar://biomolecular_structure_viewer` link for raster layers).
+- **3. Heat Analysis (`PredictionsPage.tsx` / `HeatPage`):** Defensible spatial ML tournament (Random Forest, XGBoost, LightGBM), test scatter plot, spatial partitioning visualization, and zone comparison matrix.
+- **4. Environmental Analysis (`EnvironmentalPage.tsx`):** Dedicated environmental telemetry view showcasing Open-Meteo continuous weather time series, OpenAQ/CPCB air quality monitoring stations (PM2.5, PM10, NO2, SO2, O3, CO), and CGWB groundwater monitoring wells (depth in mbgl).
+- **5. Heat Risk & Vulnerability (`RiskPage.tsx`):** Multi-factor transparent risk decomposition (Hazard × Exposure × Vulnerability) across municipal wards.
+- **6. Explainable AI (`ExplainPage.tsx`):** Exact additive TreeSHAP global feature importance and zone-specific cooling/heating attributions.
+- **7. Mitigation Planning (`SimulatorPage.tsx`):** Literature-grounded cooling simulation across eight interventions with physical constraints and uncertainty bounds.
+- **8. Intervention Optimization (`OptimizerPage.tsx`):** Physical-only Google OR-Tools CP-SAT discrete combinatorial optimization (water limits, land-use ceilings, roof exclusivity, and cooling targets with zero budget constraints).
+- **9. AI Climate Assistant (`AssistantPage.tsx`):** Multi-provider LLM assistant (Groq / Gemini) grounded strictly in backend analytical evidence with numeric guardrails and citations.
+- **10. Reports & Data Export (`ReportsPage.tsx`):** Municipal summary generator with downloadable Markdown, CSV, and JSON audit packages.
+
+### Navigation & Shell Features
+- **Collapsible Application Shell (`Sidebar.tsx`):** Supports 240px expanded state, 64px icon-only rail with tooltips, and mobile drawer overlay with smooth transitions.
+- **Omni-Search Command Palette (`CommandBar.tsx` / `Topbar.tsx`):** Press `Ctrl+K` or `⌘K` anywhere to search views, switch target cities (Ahmedabad, Delhi, Hyderabad), find zones, or toggle map layers.
+- **Backward-Compatible Route Slugs:** Full support for canonical routes and legacy aliases (`overview`, `map`, `heat`, `prediction`, `compare`, `environmental`, `risk`, `explain`, `simulator`, `optimizer`, `assistant`, `reports`, `predictions`, `simulations`).
 
 ## Data integrations: actual status
 
@@ -182,12 +231,21 @@ Invalid ranges, coordinates, polygons, city IDs, zone IDs, intervention keys, du
 ## Tests
 
 ```bash
-PYTHONPATH=backend .venv/bin/python -m pytest backend/tests -q
+# Run 175 automated backend tests (unit, pipeline, sources, API, challenger regression, E2E tiers 1-4):
+pytest backend/tests/ -v
+
+# Run 54 frontend Vitest component, utility, and API client tests:
+npm --prefix frontend test -- --run
+
+# Run TypeScript type check and production Vite bundle build:
 npm --prefix frontend run build
+
 # Optional automated Chromium tests, with the app running:
 .venv/bin/python -m pip install playwright
 .venv/bin/python scripts/browser_smoke.py
 ```
+
+The repository root includes `pytest.ini`, so the backend suite is discovered automatically without needing to set `PYTHONPATH` manually. Fast startup and model persistence are enabled via environment variables (`FAST_STARTUP=1`, `PREWARM_STATE=0`), ensuring test suites execute in seconds.
 
 Backend tests use their own temporary SQLite database and model directory, keeping mocked source data out of the actual workspace. PostgreSQL/PostGIS was separately tested against the running Docker database. Browser checks use `/usr/bin/chromium`; set `BROWSER_EXECUTABLE` for another installed Chromium. See `docs/VERIFICATION.md` for the executed checks and limitations.
 

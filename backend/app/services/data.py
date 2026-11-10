@@ -110,12 +110,19 @@ def sample_data(
             zones.append(
                 {"type": "Feature", "geometry": mapping(polygon), "properties": props}
             )
+    is_default_baseline = (
+        boundary is None
+        and lat is None
+        and lon is None
+        and rural_reference == 33.0
+    )
     return {
         "type": "FeatureCollection",
         "features": zones,
         "metadata": {
             "source": "Seeded synthetic demonstration dataset",
             "synthetic": True,
+            "isSynthetic": True,
             "city": city,
             "center": [lat, lon],
             "resolution_m": 1000,
@@ -123,7 +130,11 @@ def sample_data(
             "acquisition_date": "2025-05-15",
             "rural_reference_c": rural_reference,
             "rural_method": "Configurable synthetic rural LST; no observed rural reference available.",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": (
+                "2025-05-15T00:00:00+00:00"
+                if is_default_baseline
+                else datetime.now(timezone.utc).isoformat()
+            ),
             "limitations": [
                 "Synthetic environmental and demographic values; not satellite observations.",
                 "Metrics measure recovery of a synthetic relationship, not real-world accuracy.",

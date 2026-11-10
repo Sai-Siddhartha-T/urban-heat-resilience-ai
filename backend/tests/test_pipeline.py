@@ -3,7 +3,7 @@ import pytest
 from app.db import init_db
 from app.services.data import sample_data
 from app.services.ml import train, infer
-from app.services.planning import risk, simulate, optimize
+from app.services.planning import risk, simulate, optimize, apply_convenience
 
 
 @pytest.fixture(scope="module")
@@ -59,6 +59,21 @@ def test_optimizer_constraints_and_infeasibility(analysis):
         assert s["feasible"] and not s["violations"]
     impossible = optimize(zones, 0, 0, 4, 0)
     assert not impossible["feasible"] and impossible["status"] == "INFEASIBLE"
+
+
+def test_convenience_inputs_convert_without_changing_coefficients(analysis):
+    zone = analysis[0]["features"][0]["properties"]
+    coverage, notes = apply_convenience(
+        zone, {"vegetation": 5}, tree_count=1000, roof_treated_pct=50, road_treated_pct=25
+    )
+    area_m2 = zone["area_km2"] * 1_000_000
+    assert coverage["trees"] == pytest.approx(1000 * 28 / area_m2 * 100)
+    assert coverage["cool_roofs"] == pytest.approx(0.5 * zone["roof_pct"])
+    assert coverage["pavements"] == pytest.approx(0.25 * zone["road_pct"])
+    assert coverage["vegetation"] == 5
+    assert len(notes) == 3
+    with pytest.raises(ValueError):
+        apply_convenience(zone, {}, tree_count=10_000_000)
 
 
 def test_risk_is_not_population_only(analysis):

@@ -16,6 +16,12 @@ parser.add_argument(
     "--input",
     help="Optional preprocessed, labeled GeoJSON FeatureCollection. Does not replace dashboard sample data.",
 )
+parser.add_argument(
+    "--folds",
+    type=int,
+    default=None,
+    help="Optional number of KMeans spatial cross-validation folds (minimum 3).",
+)
 args = parser.parse_args()
 init_db()
 if args.input:
@@ -69,5 +75,5 @@ if args.input:
     )
 else:
     data = persist_dataset(sample_data(args.city))
-artifact = train(data)
+artifact = train(data, n_folds=args.folds)
 print(json.dumps(describe(artifact), indent=2))
